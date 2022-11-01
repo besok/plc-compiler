@@ -1,9 +1,10 @@
 use logos::{FilterResult, Lexer, Logos};
 use logos::skip;
-use crate::parser::ast::{Text, to_text,to_type_cast,TypeCast};
+use crate::parser::ast::{Text, to_text, to_type_cast, TypeCast};
 use crate::parser::ast::numeric::Numeric;
-use crate::parser::ast::numeric::number;
-use crate::parser::ast::time::{Date, to_date_value, to_tod_value,to_data_time_value,to_time_value,to_duration};
+use crate::parser::ast::numeric::to_number;
+use crate::parser::ast::numeric::to_real;
+use crate::parser::ast::time::{Date, to_date_value, to_tod_value, to_data_time_value, to_duration};
 
 #[derive(Logos, Clone, Copy, Debug, PartialEq)]
 #[logos(subpattern int_type = r"(?i)(USINT|UINT|UDINT|ULINT|SINT|INT|DINT|LINT)#")]
@@ -21,35 +22,24 @@ pub enum Token<'a> {
     #[regex(r"(?&id)")]
     Id(&'a str),
 
-    #[regex(r"((?&int_type)|(?&bit_type))?((?&digit)|(?&hex)|(?&oct)|(?&bin))", number)]
-    #[regex(r"((?&real_type))?(?&digit)?\.(?&u_digit)(?&exp)?", number)]
+    #[regex(r"((?&int_type)|(?&bit_type))?((?&digit)|(?&hex)|(?&oct)|(?&bin))", to_number)]
+    #[regex(r"((?&real_type))?(?&digit)?\.(?&u_digit)(?&exp)?", to_real)]
     Numeric(Numeric),
 
     #[regex("\"((\\$.)|[^$\"])*\"", to_text)]
     #[regex("'((\\$.)|[^$'])*'", to_text)]
     Text(Text<'a>),
 
-    #[regex("(LTIME|LT|TIME|T)#-?(\\d+(\\.\\d+)?(d|h|ms|m|s|us|ns))+",to_duration, ignore(case))]
+    #[regex("(LTIME|LT|TIME|T)#-?(\\d+(\\.\\d+)?(d|h|ms|m|s|us|ns))+", to_duration, ignore(case))]
     #[regex("(LDATE|DATE|LD|D)#\\d+-\\d+-\\d+", to_date_value, ignore(case))]
-    #[regex("(DATE_AND_TIME|DT|LDATE_AND_TIME|LDT)#\\d+-\\d+-\\d+-\\d+:\\d+(:\\d+(\\.\\d+)?)?",to_data_time_value, ignore(case))]
+    #[regex("(DATE_AND_TIME|DT|LDATE_AND_TIME|LDT)#\\d+-\\d+-\\d+-\\d+:\\d+(:\\d+(\\.\\d+)?)?", to_data_time_value, ignore(case))]
     #[regex("(TIME_OF_DAY|LTIME_OF_DAY|TOD|LTOD)#\\d+:\\d+(:\\d+(\\.\\d+)?)?", to_tod_value, ignore(case))]
     DateTime(Date),
 
-    #[regex("(?&id)#(?&id)",to_type_cast)]
+    #[regex("(?&id)#(?&id)", to_type_cast)]
     TypeCastPrefix(TypeCast<'a>),
-
-
-    // #[regex("%(B|b|D|d|W|w|X|x)", super::parse_access_type)]
-    // DirectAccess(DirectAccessType),
-    //
-    // #[regex(
-    // r"%(I|i|Q|q|M|m)(B|b|D|d|W|w|X|x|\*)",
-    // super::parse_hardware_access_type
-    // )]
-    // HardwareAccess((HardwareAccessType, DirectAccessType)),
-
-
-
+    #[regex("%[IQM][XBWDL]?[0-9]+(\\.[0-9]+)?", ignore(case))]
+    DirectVariable(&'a str),
 
     #[token("ANY", ignore(case))]
     Any,
@@ -538,7 +528,39 @@ pub enum Token<'a> {
 #[cfg(test)]
 mod tests {
     use parsit::test::lexer_test as lt;
+    use crate::parser::ast::numeric::{NType, Numeric, NValue};
+    use crate::parser::ast::Text;
+    use crate::parser::ast::time::{Date, DateValue, DurationValue, TimeValue};
     use crate::parser::tokens::Token;
+
+    #[test]
+    fn script(){
+        lt::expect_succeed::<Token>(r#"
+TYPE MyStruct: STRUCT  x: DINT; y: DINT; END_STRUCT END_TYPE
+FUNCTION main : DINT
+	main := foo();
+END_FUNCTION
+
+FUNCTION foo : DINT
+VAR
+				x : DINT;
+				s : MyStruct;
+				u,y : REF_TO DINT;
+				z : REF_TO REF_TO DINT;
+
+END_VAR
+u := NULL;
+u := &s.x;
+y := u;
+z := &y;
+s.x := 9;
+z^^ := y^*2;
+y^ := z^^*2;
+
+foo := y^;
+END_FUNCTION
+        "#)
+    }
 
     #[test]
     fn comments() {
@@ -579,12 +601,17 @@ mod tests {
         lt::expect_succeed::<Token>("11010");
         lt::expect_succeed::<Token>("2#11010");
         lt::expect_succeed::<Token>("8#7_7");
-        lt::expect_succeed::<Token>("16#fff");
+        lt::expect_succeed::<Token>("16#ff");
         lt::expect_succeed::<Token>("b#16#fff");
         lt::expect_succeed::<Token>("uint#16#fff");
-        lt::expect_succeed::<Token>("Real#1.0");
-        lt::expect_succeed::<Token>("1.0");
+        lt::expect::<Token>("Real#1.0", vec![Token::Numeric(
+            Numeric::Typed(NType::REAL, NValue::Real(1.0))
+        )]);
+        lt::expect::<Token>("1.0", vec![Token::Numeric(
+            Numeric::UnTyped(NValue::Real(1.0))
+        )]);
     }
+
     #[test]
     fn id() {
         lt::expect_succeed::<Token>("abc");
@@ -594,9 +621,10 @@ mod tests {
         lt::expect_succeed::<Token>("`abc`");
         lt::expect_succeed::<Token>("`_a_$_bc`");
     }
+
     #[test]
     fn text() {
-        lt::expect_succeed::<Token>(r#""abc""#);
+        lt::expect::<Token>(r#""abc""#, vec![Token::Text(Text("abc"))]);
         lt::expect_succeed::<Token>(r#""""#);
         lt::expect_succeed::<Token>(r#"'abc'"#);
         lt::expect_succeed::<Token>(r#"''"#);
@@ -606,9 +634,69 @@ mod tests {
           some text
         ""#);
     }
+
     #[test]
     fn type_cast() {
         lt::expect_succeed::<Token>(r#"a#b"#);
     }
+
+    #[test]
+    fn direct_var() {
+        lt::expect_succeed::<Token>("%IX1.1 %IB2.2 %QW5 %MD7");
+    }
+
+    #[test]
+    fn date() {
+        lt::expect::<Token>(r#"DATE#1984-10-01"#,
+                            vec![Token::DateTime(Date::Date(DateValue { year: 1984, month: 10, day: 1 }))],
+        );
+        lt::expect::<Token>(r#"D#1-1-1"#,
+                            vec![Token::DateTime(Date::Date(DateValue { year: 1, month: 1, day: 1 }))],
+        );
+        lt::expect::<Token>(r#"D#2001-10-04"#,
+                            vec![Token::DateTime(Date::Date(DateValue { year: 2001, month: 10, day: 4 }))],
+        );
+        lt::expect::<Token>(r#"D#1-1-1"#,
+                            vec![Token::DateTime(Date::Date(DateValue { year: 1, month: 1, day: 1 }))],
+        );
+        // TOD#1:1:1 TOD#1:1:1.123 TIME_OF_DAY#12:13 TOD#10:20
+        lt::expect::<Token>(r#"TIME_OF_DAY#20:15:12"#,
+                            vec![Token::DateTime(Date::Time(TimeValue { hour: 20, minute: 15, second: 12, nano: 0 }))],
+        );
+        lt::expect::<Token>(r#"TOD#1:1:1.123"#,
+                            vec![Token::DateTime(Date::Time(TimeValue { hour: 1, minute: 1, second: 1, nano: 123000000 }))],
+        );
+        lt::expect::<Token>(r#"TIME_OF_DAY#12:13"#,
+                            vec![Token::DateTime(Date::Time(TimeValue { hour: 12, minute: 13, second: 0, nano: 0 }))],
+        );
+        //    DATE_AND_TIME#2000-01-01-20:15
+        lt::expect::<Token>(r#"DATE_AND_TIME#1984-10-01-20:15:12"#,
+                            vec![Token::DateTime(Date::DateTime(DateValue { year: 1984, month: 10, day: 1 }, TimeValue { hour: 20, minute: 15, second: 12, nano: 0 }))],
+        );
+        lt::expect::<Token>(r#"DT#1-1-1-1:1:1"#,
+                            vec![Token::DateTime(Date::DateTime(DateValue { year: 1, month: 1, day: 1 }, TimeValue { hour: 1, minute: 1, second: 1, nano: 0 }))],
+        );
+
+        lt::expect::<Token>(r#"DT#1-1-1-1:1:1.123"#,
+                            vec![Token::DateTime(Date::DateTime(DateValue { year: 1, month: 1, day: 1 }, TimeValue { hour: 1, minute: 1, second: 1, nano: 123000000 }))],
+        );
+        lt::expect::<Token>(r#"DATE_AND_TIME#2000-01-01-20:15"#,
+                            vec![Token::DateTime(Date::DateTime(DateValue { year: 2000, month: 1, day: 1 }, TimeValue { hour: 20, minute: 15, second: 0, nano: 0 }))],
+        );
+
+        lt::expect::<Token>(r#"T#12d10ms"#,
+                            vec![Token::DateTime(Date::Duration(DurationValue{ day: 12.0, hour: 0.0, min: 0.0, sec: 0.0, milli: 10.0, micro: 0.0, nano: 0, negative: false }))],
+        );
+        lt::expect::<Token>(r#"T#12d10m"#,
+                            vec![Token::DateTime(Date::Duration(DurationValue{ day: 12.0, hour: 0.0, min: 10.0, sec: 0.0, milli: 0.0, micro: 0.0, nano: 0, negative: false }))],
+        );
+        lt::expect::<Token>(r#"TIME#12m4s3ns"#,
+                            vec![Token::DateTime(Date::Duration(DurationValue{ day: 0.0, hour: 0.0, min: 12.0, sec: 4.0, milli: 0.0, micro: 0.0, nano: 3, negative: false }))],
+        );
+        lt::expect::<Token>(r#"TIME#4d6h8m7s12ms04us2ns"#,
+                            vec![Token::DateTime(Date::Duration(DurationValue{ day: 4.0, hour: 6.0, min: 8.0, sec: 7.0, milli: 12.0, micro: 04.0, nano: 2, negative: false }))],
+        );
+    }
 }
+
 
