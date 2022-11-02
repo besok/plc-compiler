@@ -534,7 +534,7 @@ mod tests {
     use crate::parser::tokens::Token;
 
     #[test]
-    fn script(){
+    fn script() {
         lt::expect_succeed::<Token>(r#"
 TYPE MyStruct: STRUCT  x: DINT; y: DINT; END_STRUCT END_TYPE
 FUNCTION main : DINT
@@ -685,16 +685,16 @@ END_FUNCTION
         );
 
         lt::expect::<Token>(r#"T#12d10ms"#,
-                            vec![Token::DateTime(Date::Duration(DurationValue{ day: 12.0, hour: 0.0, min: 0.0, sec: 0.0, milli: 10.0, micro: 0.0, nano: 0, negative: false }))],
+                            vec![Token::DateTime(Date::Duration(DurationValue { day: 12.0, hour: 0.0, min: 0.0, sec: 0.0, milli: 10.0, micro: 0.0, nano: 0, negative: false }))],
         );
         lt::expect::<Token>(r#"T#12d10m"#,
-                            vec![Token::DateTime(Date::Duration(DurationValue{ day: 12.0, hour: 0.0, min: 10.0, sec: 0.0, milli: 0.0, micro: 0.0, nano: 0, negative: false }))],
+                            vec![Token::DateTime(Date::Duration(DurationValue { day: 12.0, hour: 0.0, min: 10.0, sec: 0.0, milli: 0.0, micro: 0.0, nano: 0, negative: false }))],
         );
         lt::expect::<Token>(r#"TIME#12m4s3ns"#,
-                            vec![Token::DateTime(Date::Duration(DurationValue{ day: 0.0, hour: 0.0, min: 12.0, sec: 4.0, milli: 0.0, micro: 0.0, nano: 3, negative: false }))],
+                            vec![Token::DateTime(Date::Duration(DurationValue { day: 0.0, hour: 0.0, min: 12.0, sec: 4.0, milli: 0.0, micro: 0.0, nano: 3, negative: false }))],
         );
         lt::expect::<Token>(r#"TIME#4d6h8m7s12ms04us2ns"#,
-                            vec![Token::DateTime(Date::Duration(DurationValue{ day: 4.0, hour: 6.0, min: 8.0, sec: 7.0, milli: 12.0, micro: 04.0, nano: 2, negative: false }))],
+                            vec![Token::DateTime(Date::Duration(DurationValue { day: 4.0, hour: 6.0, min: 8.0, sec: 7.0, milli: 12.0, micro: 04.0, nano: 2, negative: false }))],
         );
     }
 }

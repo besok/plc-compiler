@@ -1,5 +1,6 @@
 pub(crate) mod time;
 pub(crate) mod numeric;
+pub(crate) mod case;
 
 use std::fmt::{Display, Formatter};
 use logos::Lexer;

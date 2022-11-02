@@ -10,7 +10,7 @@ pub enum Numeric {
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum NValue {
-    Integer(i128),
+    Integer(i64),
     Real(f64),
     Binary(isize),
     Octal(isize),
@@ -99,7 +99,7 @@ fn parse_real(input: &str) -> Result<NValue, String> {
 }
 
 fn parse_int(input: &str) -> Result<NValue, String> {
-    input.replace("_","").parse::<i128>().map_err(|err| err.to_string()).map(NValue::Integer)
+    input.replace("_","").parse::<i64>().map_err(|err| err.to_string()).map(NValue::Integer)
 }
 
 fn parse_bin<'a>(input: &str) -> Result<NValue, String> {
