@@ -2,6 +2,10 @@ use std::str::FromStr;
 use logos::Lexer;
 use crate::parser::tokens::Token;
 
+/*
+table 5
+*/
+
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Numeric {
     Typed(NType, NValue),

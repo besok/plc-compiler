@@ -281,7 +281,6 @@ pub enum Token<'a> {
     Then,
 
     #[token("ELSIF", ignore(case))]
-    #[token("ELSE IF", ignore(case))]
     ElseIf,
 
     #[token("ELSE", ignore(case))]
@@ -452,10 +451,6 @@ pub enum Token<'a> {
 
     #[token("**")]
     Power,
-    #[token("+=")]
-    Increase,
-    #[token("-=")]
-    Decrease,
 
     #[token("/")]
     Div,
@@ -508,6 +503,7 @@ pub enum Token<'a> {
 
     #[token("FALSE", ignore(case))]
     False,
+
 
     #[regex(r"\{[^\r\n}{]*}", skip)]
     Pragma,
