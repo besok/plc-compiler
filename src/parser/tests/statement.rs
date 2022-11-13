@@ -1,4 +1,4 @@
-use parsit::test::parser_test::{expect, expect_pos, fail_on};
+use parsit::test::parser_test::{expect, expect_or_env, expect_pos, fail_on};
 use crate::parser::ast::case::CaseCondition;
 use crate::parser::ast::numeric::{NType, Numeric, NValue};
 use crate::parser::ast::{Id, SubRange, TypeCast};

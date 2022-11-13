@@ -8,7 +8,7 @@ use crate::parser::ast::case::CaseCondition;
 use crate::parser::ast::numeric::Numeric;
 use crate::parser::ast::{Id, SubRange, TypeCast};
 use crate::parser::ast::expression::Expression;
-use crate::parser::ast::statement::{AssignmentSt, AssignRhs, InvocationLine, InvocationPath, Param, InvocationSt, IfSt, Statement, IfBranch};
+use crate::parser::ast::statement::{AssignmentSt, AssignRhs, InvocationLine, InvocationPath, Param, InvocationSt, IfSt, Statement, IfBranch, CaseSelectionElem, CaseSelection, CaseSt};
 use crate::parser::ast::variable::{MultiVarElem, SymbolicVar, VarAccess, Variable, VarPath, VarValue};
 use crate::parser::tokens::Token;
 
@@ -37,6 +37,15 @@ impl<'a> Parser<'a> {
 
 
 impl<'a> Parser<'a> {
+    pub fn of(&self, pos: usize) -> Step<'a, EmptyToken> {
+        token!(self.token(pos) => Token::Of)
+    }
+    pub fn case_(&self, pos: usize) -> Step<'a, EmptyToken> {
+        token!(self.token(pos) => Token::Case)
+    }
+    pub fn end_case(&self, pos: usize) -> Step<'a, EmptyToken> {
+        token!(self.token(pos) => Token::EndCase)
+    }
     pub fn end_if(&self, pos: usize) -> Step<'a, EmptyToken> {
         token!(self.token(pos) => Token::EndIf)
     }
@@ -72,6 +81,9 @@ impl<'a> Parser<'a> {
     }
     pub fn comma(&self, pos: usize) -> Step<'a, EmptyToken> {
         token!(self.token(pos) => Token::Comma)
+    }
+    pub fn colon(&self, pos: usize) -> Step<'a, EmptyToken> {
+        token!(self.token(pos) => Token::Colon)
     }
     pub fn l_p(&self, pos: usize) -> Step<'a, EmptyToken> {
         token!(self.token(pos) => Token::LParen)
@@ -366,6 +378,45 @@ impl<'a> Parser<'a> {
                 others,
                 else_body,
             })
+    }
+    pub fn case_selection_elem(&self, pos: usize) -> Step<'a, CaseSelectionElem<'a>> {
+        self.subrange(pos).map(CaseSelectionElem::Subrange)
+            .or_from(pos)
+            .or(|p| self.expression(p).map(CaseSelectionElem::Expression))
+            .into()
+    }
+    pub fn case_selection(&self, pos: usize) -> Step<'a, CaseSelection<'a>> {
+        let elem = |p| self.case_selection_elem(p);
+        let comma = |p| self.comma(p);
+        let case_list = |p| seq!(p => elem,comma);
+
+        case_list(pos)
+            .then_skip(|p| self.colon(p))
+            .then_zip(|p| self.statement_list(p))
+            .map(|(elems, stmts)| CaseSelection { elems, stmts })
+    }
+
+    pub fn case_st(&self, pos: usize) -> Step<'a, CaseSt<'a>> {
+        let cond = |p|
+            self.case_(pos)
+                .then(|p| self.expression(p))
+                .then_skip(|p| self.of(p));
+
+        let case_selection = |p|
+            self.delegate.one_or_more(p, |p| self.case_selection(p));
+
+        let else_part = |p| self.else_(p).then(|p| self.statement_list(p));
+
+        cond(pos)
+            .then_zip(case_selection)
+            .then_zip(else_part)
+            .then_skip(|p| self.end_case(p))
+            .map(|((cond, selections), else_body)|
+                CaseSt {
+                    cond,
+                    selections,
+                    else_body,
+                })
     }
 }
 

@@ -39,9 +39,9 @@ dependencies = [
 
 [[package]]
 name = "parsit"
-version = "0.1.11"
+version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "78cb3edda5702e414ab5467b9a2521d74eec9fcae989b74d1c91d8dc9837e20a"
+checksum = "c7c221bc95d678678a39a9a8ada73b0333a77a553cde0825ae5645ff6f4b9053"
 dependencies = [
  "logos",
  "logos-derive",

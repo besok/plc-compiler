@@ -105,15 +105,14 @@ pub struct IfSt<'a> {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct CaseSt<'a> {
-    cond:Expression<'a>,
-    selections:Vec<CaseSelection<'a>>,
-    else_body: Vec<Statement<'a>>
+    pub cond:Expression<'a>,
+    pub selections:Vec<CaseSelection<'a>>,
+    pub else_body: Vec<Statement<'a>>
 }
 #[derive(Debug, Clone, PartialEq)]
 pub struct CaseSelection<'a> {
-    cond:Expression<'a>,
-    elems: Vec<CaseSelectionElem<'a>>,
-    stmts: Vec<Statement<'a>>
+    pub elems: Vec<CaseSelectionElem<'a>>,
+    pub stmts: Vec<Statement<'a>>
 }
 #[derive(Debug, Clone, PartialEq)]
 pub enum CaseSelectionElem<'a>{

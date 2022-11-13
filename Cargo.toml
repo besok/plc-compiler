@@ -16,5 +16,6 @@ categories = ["api-bindings", "compilers", "parsing"]
 [dependencies]
 
 
-parsit = "0.1.11"
+parsit = "0.1.12"
+#parsit = {path = "../parseit"}
 logos = "0.12.1"
